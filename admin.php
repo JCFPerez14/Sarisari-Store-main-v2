@@ -260,3 +260,46 @@ $conn = connectDB();
     </body>
 </html>
 
+
+<?php
+// Assuming you have the necessary session checks for Super Admin
+if ($_SERVER["REQUEST_METHOD"] == "POST" && $isSuperAdmin) {
+    if (isset($_POST['enable_user'])) {
+        $username = mysqli_real_escape_string($conn, $_POST['username']);
+        mysqli_query($conn, "UPDATE users SET account_disabled = 0, failed_attempts = 0 WHERE username = '$username'");
+        $message = "User account enabled successfully.";
+    }
+}
+
+// Fetch disabled users
+$disabled_users_query = "SELECT username FROM users WHERE account_disabled = 1";
+$disabled_users_result = $conn->query($disabled_users_query);
+?>
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0">Disabled User Accounts</h3>
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php while ($row = $disabled_users_result->fetch_assoc()): ?>
+                    <tr>
+                        <td><?php echo $row['username']; ?></td>
+                        <td>
+                            <form method="post">
+                                <input type="hidden" name="username" value="<?php echo $row['username']; ?>">
+                                <button type="submit" name="enable_user" class="btn btn-success">Enable</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+</div>

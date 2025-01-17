@@ -1,44 +1,66 @@
 <?php
-  session_start();
-  // Prevent caching
-  header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-  header("Cache-Control: post-check=0, pre-check=0", false);
-  header("Pragma: no-cache");
+session_start();
+// Prevent caching
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 
-  if(isset($_SESSION['username'])) {
-      header("Location: shop_interface.php");
-      exit();
-  }
-  $conn = mysqli_connect("localhost", "root", "", "shop_db");
+if (isset($_SESSION['username'])) {
+    header("Location: shop_interface.php");
+    exit();
+}
 
-  if(isset($_POST['login'])) {
-      $username = mysqli_real_escape_string($conn, $_POST['username']);
-      $password = mysqli_real_escape_string($conn, $_POST['password']);
+$conn = mysqli_connect("localhost", "root", "", "shop_db");
+
+if (isset($_POST['login'])) {
+    $username = mysqli_real_escape_string($conn, $_POST['username']);
+    $password = mysqli_real_escape_string($conn, $_POST['password']);
     
-      $query = "SELECT * FROM users WHERE username='$username'";
-      $result = mysqli_query($conn, $query);
+    $query = "SELECT * FROM users WHERE BINARY username='$username'";
+    $result = mysqli_query($conn, $query);
     
-      if(mysqli_num_rows($result) == 1) {
-          $user = mysqli_fetch_assoc($result);
-          if(password_verify($password, $user['password'])) {
-              $_SESSION['username'] = $username;
-              $_SESSION['role'] = $user['role']; // Store the role in session
-              
-              // Redirect based on role
-              if ($_SESSION['role'] === 'SuperAdmin') {
-                  header("Location: admin.php");
-              } else {
-                  header("Location: shop_interface.php");
-              }
-              exit();
-          } else {
-              $error = "Invalid username or password";
-          }
-      } else {
-          $error = "Invalid username or password";
-      }
-  }
-  ?>
+    if (mysqli_num_rows($result) == 1) {
+        $user = mysqli_fetch_assoc($result);
+        
+        // Check if account is disabled
+        if ($user['account_disabled']) {
+            $error = "Your account is disabled. Please contact a Super Admin.";
+        } else {
+            if (password_verify($password, $user['password'])) {
+                // Reset failed attempts on successful login
+                mysqli_query($conn, "UPDATE users SET failed_attempts = 0 WHERE username = '$username'");
+                
+                $_SESSION['username'] = $username;
+                $_SESSION['role'] = $user['role']; // Store the role in session
+            
+                // Redirect based on role
+                if ($_SESSION['role'] === 'SuperAdmin') {
+                    header("Location: admin.php");
+                } else {
+                    header("Location: shop_interface.php");
+                }
+                exit();
+            } else {
+                // Increment failed attempts
+                $failed_attempts = $user['failed_attempts'] + 1;
+                $last_failed_attempt = date("Y-m-d H:i:s");
+                
+                mysqli_query($conn, "UPDATE users SET failed_attempts = $failed_attempts, last_failed_attempt = '$last_failed_attempt' WHERE username = '$username'");
+                
+                // Check if failed attempts exceed limit
+                if ($failed_attempts >= 5) {
+                    mysqli_query($conn, "UPDATE users SET account_disabled = 1 WHERE username = '$username'");
+                    $error = "Your account has been disabled due to too many failed login attempts. Please contact a Super Admin.";
+                } else {
+                    $error = "Invalid username or password. Attempt $failed_attempts of 5.";
+                }
+            }
+        }
+    } else {
+        $error = "Invalid username or password.";
+    }
+}
+?>
 <!doctype html>
 <html lang="en">
     <head>
