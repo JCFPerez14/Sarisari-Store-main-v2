@@ -4,7 +4,6 @@ startSecureSession();
 requireLogin();
 $conn = connectDB();
 $isAdmin = isset($_SESSION['role']) && ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'SuperAdmin');
-
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Add new item operation
         if (isset($_POST['submit'])) {
@@ -170,9 +169,12 @@ $isAdmin = isset($_SESSION['role']) && ($_SESSION['role'] === 'admin' || $_SESSI
             <h2 class="mb-0"><i class="fas fa-store me-2"></i>Welcome, <?php echo isset($_SESSION['username']) ? $_SESSION['username'] : 'User'; ?></h2>
 
                 <div class="d-flex align-items-center">
-                    <a href="admin.php" class="btn btn-customs ms-2">
-                        <i class="fas fa-users-cog me-2"></i>User Management
-                    </a>
+                    <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'SuperAdmin'): ?>
+                        <a href="admin.php" class="btn btn-customs ms-2">
+                            <i class="fas fa-users-cog me-2"></i>User Management
+                        </a>
+                    <?php endif; ?>
+
                     <form method="post" action="logout.php">
                         <button type="submit" class="btn btn-danger">
                             <i class="fas fa-sign-out-alt me-2"></i>Logout
